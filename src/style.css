@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #263d38;
+  --color-shell: #f5f2ec;
+  --color-paper: #faf8f3;
+  --color-cream: #f4f0e8;
+  --color-gold: #e8b36e;
+  --color-coral: #d66b51;
+  --color-coral-soft: #f4ddd4;
+  --color-sage: #6d8577;
+  --color-sage-light: #d9e0d5;
+  --color-mist: #aebbb2;
+  --color-muted: #89958d;
+  --color-line: #e4dfd5;
+  --color-line-soft: #e9e4da;
+  --color-bubble: #eeece4;
+  --color-bubble-own: #e9d8c1;
+  --color-peach: #f1c4a3;
+  --color-blue: #b9d3d5;
+  --color-lavender: #c7c0d9;
+  --color-olive: #bac79d;
+  --color-sky: #8cb3bb;
+  --color-leaf: #9aae79;
+  --color-text-strong: #53675d;
+  --color-text-soft: #89958d;
+  --color-text-faint: #aebbb2;
+  --color-text-dim: #9ca8a0;
+  --color-text-pale: #dbe2dc;
+  --color-text-warm: #bd765e;
+  --color-border-dark: #3b514a;
+  --color-border: #d9d3c8;
+  --color-border-input: #d8d5cc;
+  --color-border-muted: #e5e0d6;
+  --color-border-light: #e9e4da;
+  --color-sage-dark: #668273;
+  --color-sage-pale: #f7e6c9;
+  --color-sage-text: #82988c;
+  --color-avatar-peach-text: #875946;
+  --color-avatar-blue-text: #456d70;
+  --color-avatar-lavender-text: #675d7f;
+  --color-avatar-olive-text: #5c6847;
+  --color-avatar-coral: #d99379;
+  --color-avatar-coral-text: #743e35;
+  --color-breadcrumb: #d0ccc2;
+  --color-placeholder: #aab1aa;
+  --color-notification: #697d72;
+  --color-eyebrow: #b27a5e;
+  --color-case-bg: #d9e0d5;
+  --color-case-text: #697a70;
+  --color-case-muted: #9ca69e;
+  --color-case-heading: #718077;
+  --color-case-count: #abb2aa;
+  --color-steam: #9caf9b;
+  --color-difficulty: #e1a060;
+  --color-icon-bg: #f3dec6;
+  --color-icon: #c37958;
+  --color-story-orange: #b8765d;
+  --color-bubble-text: #51625a;
+  --color-bubble-own-text: #665444;
+  --color-composer: #ede9df;
+  --color-composer-icon: #829189;
+  --shadow-sidebar: 8px 0 25px #263d3833;
+  --shadow-live: 0 0 0 4px #f4ddd4;
+}
+
+@layer base {
+  :root {
+    font-family: "Noto Sans TC", "PingFang TC", sans-serif;
+    color: #263d38;
+    background: #eee9df;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; min-width: 320px; }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+}
