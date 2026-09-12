@@ -1,69 +1,27 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
-import { v4 as uuidv4 } from 'uuid'
 import Swal from 'sweetalert2'
-import DOMPurify from 'dompurify'
 import AppLayout from '../layout/AppLayout.vue'
 import { createMessage, getMessages, type Message } from '../api/message'
-import { marked } from 'marked'
+import { me, type User } from '../api/auth'
 
-const activeRoom = ref('深夜食堂')
 const conversationId = ref('b070ccfe-2c0a-47e3-b0c8-94163b9485df')
 const message = ref('')
+const messages = ref<Message[]>([])
 const isSending = ref(false)
 const messageError = ref('')
-
-const rooms = [
-  { name: '深夜食堂', description: '案件 #042', count: 6, color: 'bg-coral' },
-  { name: '週末聚會', description: '案件 #038', count: 4, color: 'bg-leaf' },
-  { name: '新手村', description: '自由討論', count: 12, color: 'bg-sky' },
-]
-
-const sampleMessages = [
-  { user: '小葵', initials: '小', time: '22:41', text: '這次的現場有一個很奇怪的地方。', response: "否", color: 'bg-peach text-avatar-peach-text', own: false },
-  { user: '阿湯', initials: '阿', time: '22:42', text: '是湯裡面有不尋常的味道嗎？', response: "否", color: 'bg-blue text-avatar-blue-text', own: false },
-  { user: '小葵', initials: '小', time: '22:42', text: '不是，湯是完全正常的。', response: "是", color: 'bg-peach text-avatar-peach-text', own: false },
-  { user: '你', initials: '你', time: '22:43', text: '那個人有看見什麼嗎？', response: "無關", color: 'bg-ink text-sage-pale', own: true },
-]
-
-const messages = ref(sampleMessages)
+const userInfo = ref<User|null>(null)
 const messagesContainer = ref<HTMLElement | null>(null);
-
-function toChatMessage(apiMessage: Message) {
-    const isOwnMessage = apiMessage.user_id === '你'
-    const response = apiMessage.response ? DOMPurify.sanitize(
-        marked.parse(
-            apiMessage.response, { async: false }
-        )
-    ) : ''
-
-    return {
-        user: apiMessage.user_id,
-        initials: apiMessage.user_id.slice(0, 1),
-        time: apiMessage.created_at
-            ? new Date(apiMessage.created_at).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })
-            : '--:--',
-        text: apiMessage.content,
-        response: response ?? '',
-        color: isOwnMessage ? 'bg-ink text-sage-pale' : 'bg-blue text-avatar-blue-text',
-        own: isOwnMessage,
-    }
-}
 
 async function loadMessages() {
     messageError.value = ''
-
-    try {
-        const apiMessages = await getMessages(conversationId.value)
-        messages.value = apiMessages.message.map(toChatMessage)
-    } catch (error) {
+    await getMessages(conversationId.value)
+    .then((res: Record<string, Message[]>) => {
+        messages.value = res["message"]
+    })
+    .catch((error)=>{
         messageError.value = error instanceof Error ? error.message : '訊息載入失敗'
-    }
-}
-
-async function selectRoom(roomName: string) {
-    activeRoom.value = roomName
-    await loadMessages()
+    })
 }
 
 async function sendMessage() {
@@ -73,16 +31,16 @@ async function sendMessage() {
     isSending.value = true
     messageError.value = ''
 
-    try {
-        const createdMessage = await createMessage({ 
-            user_id: uuidv4(),
-            content: content,
-            conversation_id: conversationId.value
-        })
-        messages.value.push(toChatMessage(createdMessage.message[0]))
-        message.value = ''
-    } catch (error) {
-        messageError.value = error instanceof Error ? error.message : '訊息送出失敗'
+    await createMessage({ 
+        user_id: userInfo.value?.user_id ?? '',
+        content: content,
+        conversation_id: conversationId.value
+    })
+    .then((res: Record<string, Message[]>)=>{
+        messages.value.push(res["message"][0])
+    })
+    .catch(async (err)=>{
+        messageError.value = err instanceof Error ? err.message : '訊息送出失敗'
         await Swal.fire({
             title: '訊息送出失敗',
             text: '請稍後再試。',
@@ -90,9 +48,10 @@ async function sendMessage() {
             confirmButtonText: '知道了',
             confirmButtonColor: 'var(--color-coral)',
         })
-    } finally {
-        isSending.value = false
-    }
+    })
+    .finally(()=>{
+        message.value = ''
+    })
 }
 
 function showClue() {
@@ -105,7 +64,14 @@ function showClue() {
   })
 }
 
-onMounted(loadMessages)
+function isOwnMessage(messageItem: Message) {
+    return userInfo.value?.user_id === messageItem.user_id
+}
+
+onMounted(async ()=>{
+    loadMessages();
+    userInfo.value = await me()
+})
 watch(
   messages,
   async () => {
@@ -121,7 +87,7 @@ watch(
 </script>
 
 <template>
-    <AppLayout :rooms="rooms" :active-room="activeRoom" @select-room="selectRoom" @add-room="showClue">
+    <AppLayout v-slot="{ activeRoom }">
         <div class="flex flex-col gap-5 mx-auto p-5 md:max-w-3/4">
             <!-- 上方聊天室資訊欄 -->
             <section class="block md:flex md:items-end md:justify-between">
@@ -161,37 +127,32 @@ watch(
                         <div class="flex items-center gap-3.25 text-md text-text-faint before:h-px before:flex-1 before:bg-line-soft after:h-px after:flex-1 after:bg-line-soft">
                             <span>今天</span>
                         </div>
-                        <article v-for="chat in messages" :key="`${chat.user}-${chat.time}`" :class="['mb-5 grid grid-cols-1 max-w-[95%] items-start gap-2.5 md:max-w-4/5', { 'ml-auto max-w-4/5 flex-row-reverse md:max-w-[78%]': chat.own }]">
-                            
-                            <div :class="['flex flex-1 gap-4 min-w-0', { 'text-right': chat.own }]">
-                                <div class="self-center">
-                                    <span :class="['grid h-10 w-10 shrink-0 place-items-center rounded-full text-md font-semibold', chat.color]">
-                                        {{ chat.initials }}
-                                    </span>
-                                </div>
-                                <div>
-                                    <div :class="['mb-1.25 flex items-baseline gap-2', { 'justify-end': chat.own }]">
-                                        <strong class="text-sm text-text-strong">{{ chat.user }}</strong>
-                                        <time class="text-xs text-text-faint">{{ chat.time }}</time>
+                        <article v-for="chat in messages" :key="`${chat.id}-${chat.created_at}`" class="mb-6 flex flex-col gap-3" :class="{ 'ml-auto': isOwnMessage(chat) }">
+                            <div :class="['flex min-w-0 items-start gap-3', { 'flex-row-reverse text-right': isOwnMessage(chat) }]">
+                                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full text-md font-semibold bg-blue text-avatar-blue-text">
+                                    {{ chat.user_name.slice(0, 1) }}
+                                </span>
+                                <div class="min-w-0 max-w-[calc(100%-52px)]">
+                                    <div :class="['mb-1.25 flex items-baseline gap-2', { 'justify-end': isOwnMessage(chat) }]">
+                                        <strong class="text-sm text-text-strong">{{ chat.user_name }}</strong>
+                                        <time class="text-xs text-text-faint">{{ chat.created_at }}</time>
                                     </div>
-                                    <p :class="['m-0 rounded-[0_8px_8px_8px] bg-bubble p-3 text-left text-md leading-[1.6] text-bubble-text', { 'rounded-[8px_0_8px_8px] bg-bubble-own text-bubble-own-text': chat.own }]">
-                                        {{ chat.text }}
+                                    <p :class="['m-0 whitespace-pre-wrap break-words p-3 text-left text-md leading-[1.6]', isOwnMessage(chat) ? 'rounded-[8px_0_8px_8px] bg-bubble-own text-bubble-own-text' : 'rounded-[0_8px_8px_8px] bg-bubble text-bubble-text']">
+                                        {{ chat.content }}
                                     </p>
                                 </div>
                             </div>
-                            
-                            <div :class="['flex flex-1 gap-4 min-w-0', { 'text-right': chat.own }]">
-                                <div class="self-center">
-                                    <span :class="['grid h-10 w-10 shrink-0 place-items-center rounded-full text-md font-semibold bg-peach text-avatar-peach-text']">
-                                        主
-                                    </span>
-                                </div>
-                                <div>
-                                    <div :class="['mb-1.25 flex items-baseline gap-2', { 'justify-end': chat.own }]">
+
+                            <div v-if="chat.response" class="flex min-w-0 items-start gap-3">
+                                <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-peach text-md font-semibold text-avatar-peach-text">
+                                    主
+                                </span>
+                                <div class="min-w-0 max-w-[calc(100%-52px)]">
+                                    <div class="mb-1.25 flex items-baseline gap-2">
                                         <strong class="text-sm text-text-strong">主持人</strong>
-                                        <time class="text-xs text-text-faint">{{ chat.time }}</time>
+                                        <time class="text-xs text-text-faint">{{ chat.created_at }}</time>
                                     </div>
-                                    <p v-html="chat.response" :class="['m-0 rounded-[0_8px_8px_8px] bg-peach p-3 text-left text-md leading-[1.6] text-bubble-text', { 'rounded-[8px_0_8px_8px] bg-bubble-own text-bubble-own-text': chat.own }]"></p>
+                                    <p v-html="chat.response" class="m-0 break-words rounded-[0_8px_8px_8px] bg-peach p-3 text-left text-md leading-[1.6] text-bubble-text"></p>
                                 </div>
                             </div>
                         </article>
@@ -209,11 +170,11 @@ watch(
                 <!-- 案件資訊欄 -->
                 <aside class="self-start rounded-lg border border-line bg-paper p-[20px_17px] md:p-[25px_23px_21px]" aria-label="案件資訊">
                     <div class="flex items-start gap-2.5"><span class="grid h-7.25 w-7.25 place-items-center rounded-full bg-icon-bg text-[15px] text-icon">✦</span><div><p class="m-0 mb-1 text-[9px] text-text-faint">本局案件</p><h2 class="m-0 font-serif text-lg font-normal text-ink">最後一碗湯</h2></div><button class="ml-auto border-0 bg-transparent tracking-widest text-text-faint" aria-label="案件選單">•••</button></div>
-                    <div class="relative my-4.25 grid h-31.25 place-items-center overflow-hidden rounded bg-case-bg text-sage-dark md:my-[22px_17px]"><span class="relative z-10 text-5xl">♨</span><div class="absolute left-[42%] top-3 h-14.5 w-6.25 rotate-20 rounded-[50%] border-l-2 border-steam"></div><div class="absolute left-[53%] top-[5px] h-[58px] w-[25px] rotate-[-18deg] rounded-[50%] border-l-2 border-steam"></div></div>
+                    <div class="relative my-4.25 grid h-31.25 place-items-center overflow-hidden rounded bg-case-bg text-sage-dark md:my-[22px_17px]"><span class="relative z-10 text-5xl">♨</span><div class="absolute left-[42%] top-3 h-14.5 w-6.25 rotate-20 rounded-[50%] border-l-2 border-steam"></div><div class="absolute left-[53%] top-1.25 h-14.5 w-6.25 rotate-[-18deg] rounded-[50%] border-l-2 border-steam"></div></div>
                     <p class="m-0 text-[11px] leading-[1.8] text-case-text">一名男子走進餐廳，點了一碗海龜湯。他只喝了一口，便離開餐廳，回家後自殺了。</p>
                     <div class="mt-5 flex items-center justify-between text-[10px] text-case-muted"><span>案件難度</span><strong class="text-[10px] font-medium text-case-heading">中等 <i class="ml-1.75 text-[9px] not-italic tracking-wide text-difficulty">★★★☆☆</i></strong></div>
                     <div class="my-4.25 h-px bg-line-soft"></div><div class="flex items-center justify-between text-[10px] text-case-heading"><strong>房間成員</strong><span class="text-[9px] text-case-count">6 / 8</span></div>
-                    <div class="flex py-3.25 pb-5.25"><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-peach text-[9px] text-avatar-peach-text">小</span><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-blue text-[9px] text-avatar-blue-text">阿</span><span class="-mr-[5px] grid h-[29px] w-[29px] place-items-center rounded-full border-2 border-paper bg-lavender text-[9px] text-avatar-lavender-text">米</span><span class="-mr-[5px] grid h-[29px] w-[29px] place-items-center rounded-full border-2 border-paper bg-olive text-[9px] text-avatar-olive-text">周</span><span class="-mr-[5px] grid h-[29px] w-[29px] place-items-center rounded-full border-2 border-paper bg-avatar-coral text-[9px] text-avatar-coral-text">葉</span><span class="-mr-[5px] grid h-[29px] w-[29px] place-items-center rounded-full border-2 border-paper bg-gold text-[9px] text-ink">你</span></div>
+                    <div class="flex py-3.25 pb-5.25"><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-peach text-[9px] text-avatar-peach-text">小</span><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-blue text-[9px] text-avatar-blue-text">阿</span><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-lavender text-[9px] text-avatar-lavender-text">米</span><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-olive text-[9px] text-avatar-olive-text">周</span><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-avatar-coral text-[9px] text-avatar-coral-text">葉</span><span class="-mr-1.25 grid h-7.25 w-7.25 place-items-center rounded-full border-2 border-paper bg-gold text-[9px] text-ink">你</span></div>
                     <button class="w-full rounded border border-border bg-transparent p-2.5 text-[10px] text-text-warm" @click="showClue">查看完整案件 <span class="ml-1.75">↗</span></button>
                 </aside>
             </div>

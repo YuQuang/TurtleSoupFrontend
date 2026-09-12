@@ -1,7 +1,7 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? ''
+const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL ?? ''
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
+  const response = await fetch(`${backendBaseUrl}${path}`, {
     headers: {
       'Content-Type': 'application/json',
       ...options?.headers,

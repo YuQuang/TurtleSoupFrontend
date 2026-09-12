@@ -3,21 +3,10 @@ import { ref } from 'vue'
 import Swal from 'sweetalert2'
 import AppLayout from '../layout/AppLayout.vue'
 
-const activeRoom = ref('深夜食堂')
 const displayName = ref('林小湯')
 const email = ref('lin.tang@example.com')
 const soundEnabled = ref(true)
 const desktopNotifications = ref(true)
-const rooms = [
-  { name: '深夜食堂', description: '案件 #042', count: 6, color: 'bg-coral' },
-  { name: '週末聚會', description: '案件 #038', count: 4, color: 'bg-leaf' },
-  { name: '新手村', description: '自由討論', count: 12, color: 'bg-sky' },
-]
-
-function selectRoom(roomName: string) {
-  activeRoom.value = roomName
-}
-
 function saveSettings() {
   Swal.fire({
     title: '設定已儲存',
@@ -28,19 +17,10 @@ function saveSettings() {
   })
 }
 
-function showClue() {
-  Swal.fire({
-    title: '主持人的提示',
-    text: '關鍵不在湯，而在那個人為什麼會點湯。',
-    icon: 'info',
-    confirmButtonText: '收到提示',
-    confirmButtonColor: 'var(--color-coral)',
-  })
-}
 </script>
 
 <template>
-    <AppLayout :rooms="rooms" :active-room="activeRoom" @select-room="selectRoom" @add-room="showClue">
+    <AppLayout>
         <div class="mx-auto max-w-297.5 px-4 py-7.25 md:px-[5.5%] md:py-13.75">
             <section class="mb-6.25"><p class="m-0 text-[10px] tracking-wider text-eyebrow">個人設定</p><h1 class="my-3.25 mb-1.75 font-serif text-9.5 font-normal tracking-tight text-ink">帳號與偏好</h1><p class="m-0 text-xs text-muted">管理你的個人資料與聊天室體驗。</p></section>
 

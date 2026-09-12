@@ -8,20 +8,13 @@ type Room = {
   color: string
 }
 
-defineProps<{
-  rooms: Room[]
-  activeRoom: string
-}>()
-
-const emit = defineEmits<{
-  selectRoom: [roomName: string]
-  addRoom: []
-}>()
-
+const rooms: Room[] = [
+  { name: '公開聊天室', description: '自由討論', count: 6, color: 'bg-coral' },
+]
+const activeRoom = ref(rooms[0].name)
 const isSidebarOpen = ref(false)
 
-function selectRoom(roomName: string) {
-  emit('selectRoom', roomName)
+function closeSidebar() {
   isSidebarOpen.value = false
 }
 
@@ -44,13 +37,14 @@ function toggleSidebar() {
       <div class="px-1">
         <div class="flex items-center justify-between px-2.25 pb-3 text-[11px] tracking-wider text-mist">
           <span>我的聊天室</span>
-          <button class="border-0 bg-transparent text-xl leading-none text-gold" aria-label="新增聊天室" @click="emit('addRoom')">＋</button>
         </div>
-        <button
+        <RouterLink
           v-for="room in rooms"
           :key="room.name"
-          :class="['mb-0.75 flex w-full items-center gap-2.5 rounded-lg border-0 px-2.5 py-2.75 text-left text-text-pale', { 'bg-shell text-ink': activeRoom === room.name }]"
-          @click="selectRoom(room.name)"
+          class="mb-0.75 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.75 text-left text-text-pale"
+          active-class="bg-shell text-ink"
+          to="/"
+          @click="closeSidebar"
         >
           <span :class="['h-2 w-2 shrink-0 rounded-full', room.color]"></span>
           <span class="min-w-0 flex-1">
@@ -58,7 +52,23 @@ function toggleSidebar() {
             <small :class="['block text-[10px]', activeRoom === room.name ? 'text-muted' : 'text-text-faint']">{{ room.description }}</small>
           </span>
           <span :class="['text-[10px]', activeRoom === room.name ? 'text-coral' : 'text-text-faint']">{{ room.count }}</span>
-        </button>
+        </RouterLink>
+        <RouterLink
+          class="mt-2 flex items-center gap-2.5 rounded-lg border border-dashed border-sage/50 px-2.5 py-2.75 text-[12px] text-gold transition-colors hover:border-gold hover:bg-sage/30"
+          to="/stories/new"
+          @click="isSidebarOpen = false"
+        >
+          <span class="grid h-5 w-5 place-items-center rounded-full border border-gold text-sm leading-none">＋</span>
+          <span>新增故事</span>
+        </RouterLink>
+        <RouterLink
+          class="mt-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2.75 text-[12px] text-text-pale transition-colors hover:bg-sage/30 hover:text-cream"
+          to="/stories"
+          @click="isSidebarOpen = false"
+        >
+          <span class="grid h-5 w-5 place-items-center rounded-full border border-sage text-sm leading-none">▤</span>
+          <span>故事庫</span>
+        </RouterLink>
       </div>
 
       <div class="mt-8.75 px-1">
@@ -90,7 +100,7 @@ function toggleSidebar() {
         </header>
 
         <main class="min-w-0 flex-1">
-            <slot></slot>
+            <slot :active-room="activeRoom"></slot>
         </main>
     </div>
   </div>
