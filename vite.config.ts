@@ -11,6 +11,9 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    allowedHosts: [
+      "turtlesoupfrontend.onrender.com",
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
